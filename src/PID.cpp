@@ -114,6 +114,22 @@ PID::get_next_vehicle_command( const dynamics::Trajectory& trajectory, const dyn
   double pid_signal_psi = k_feed_forward_steering_angle * reference_point.steering_angle - ki_y * integral_y - kp_y * error_y
                         - heading_weight * heading_error - kp_omega * omega_error;
 
+  reference_point = trajectory.get_state_at_time( current_state.time );
+
+  // Precompute sin and cos of the reference point's yaw angle to avoid repeated calculations
+  sin_yaw_ref = std::sin( reference_point.yaw_angle );
+  cos_yaw_ref = std::cos( reference_point.yaw_angle );
+
+  // Precompute sin and cos of the current state's yaw angle to avoid repeated calculations
+  sin_yaw_current = std::sin( current_state.yaw_angle );
+  cos_yaw_current = std::cos( current_state.yaw_angle );
+
+  // Compute the distance between the current state and the reference point
+  delta_x = current_state.x - reference_point.x; // Distance in the x direction (longitudinal)
+  delta_y = current_state.y - reference_point.y; // Distance in the y direction (lateral)
+
+  // Decompose the distance into longitudinal (error_x) and lateral (error_y) components
+  error_x = cos_yaw_ref * delta_x + sin_yaw_ref * delta_y; // Longitudinal error
 
   // Ensure error_x is valid
   if( std::isnan( error_x ) || !std::isfinite( error_x ) )
