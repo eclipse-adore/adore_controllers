@@ -47,6 +47,8 @@ PID::set_parameters( const std::map<std::string, double>& params )
       steering_comfort = value;
     if( name == "acceleration_comfort" )
       acceleration_comfort = value;
+    if( name == "lookahead_time")
+      lookahead_time = value;
   }
 }
 
