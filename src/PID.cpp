@@ -47,6 +47,12 @@ PID::set_parameters( const std::map<std::string, double>& params )
       steering_comfort = value;
     if( name == "acceleration_comfort" )
       acceleration_comfort = value;
+    if( name == "acceleration_threshold" )
+      acceleration_threshold = value;
+    if( name == "velocity_threshold" )
+      velocity_threshold = value;
+    if( name == "constant_brake" )
+      constant_brake = value;
   }
 }
 
@@ -141,6 +147,13 @@ PID::get_next_vehicle_command( const dynamics::Trajectory& trajectory, const dyn
 
   // Compute the longitudinal PID signal (pid_signal_v) to adjust the speed
   double pid_signal_v = k_feed_forward_ax * reference_point.ax - kp_x * error_x - ki_x * integral_x - velocity_weight * error_v;
+
+  // Constant braking when stopped
+  if ( reference_point.ax < acceleration_threshold && current_state.vx < velocity_threshold )
+  {
+    pid_signal_v = constant_brake;
+    pid_signal_psi = last_steering_angle;
+  }
 
   // Steering angle velocity control for smoother transitions
   double steering_angle_velocity = ( pid_signal_psi - last_steering_angle ) / dt;
