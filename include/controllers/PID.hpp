@@ -58,6 +58,11 @@ private:
   double last_steering_angle = 0.0;
   double last_acceleration   = 0.0;
 
+  // Parameters for stopping at standstill
+  double acceleration_threshold = 0.05;
+  double velocity_threshold = 1.0;
+  double constant_brake = 0.5;
+
   bool debug_active = false;
 
 
