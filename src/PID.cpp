@@ -53,6 +53,8 @@ PID::set_parameters( const std::map<std::string, double>& params )
       velocity_threshold = value;
     if( name == "constant_brake" )
       constant_brake = value;
+    if( name == "lookahead_time")
+      lookahead_time = value;
   }
 }
 
