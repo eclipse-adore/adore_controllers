@@ -24,7 +24,7 @@ namespace adore
 namespace controllers
 {
 
-using Controller = std::variant<NMPC, PID, iLQR>;
+using Controller = std::variant<PID, iLQR>;
 
 inline void
 set_parameters( Controller& controller, const dynamics::VehicleCommandLimits& command_limits,

@@ -47,7 +47,7 @@ private:
   double dt                            = 0.05;
   double steering_comfort              = 2.5; // Comfort limit for steering change
   double acceleration_comfort          = 2.5; // Comfort limit for acceleration change
-  double lookahead_time                = 0.5;
+  double lookahead_time                = 1.0;
   double dt_trajectory                 = 0.1; // dt between points in the trajectory
 
   // State variables for integral control
@@ -57,11 +57,6 @@ private:
   // Last known steering angle and acceleration to ensure smooth transitions
   double last_steering_angle = 0.0;
   double last_acceleration   = 0.0;
-
-  // Parameters for stopping at standstill
-  double acceleration_threshold = 0.05;
-  double velocity_threshold = 1.0;
-  double constant_brake = 0.5;
 
   bool debug_active = false;
 

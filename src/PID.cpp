@@ -47,14 +47,6 @@ PID::set_parameters( const std::map<std::string, double>& params )
       steering_comfort = value;
     if( name == "acceleration_comfort" )
       acceleration_comfort = value;
-    if( name == "acceleration_threshold" )
-      acceleration_threshold = value;
-    if( name == "velocity_threshold" )
-      velocity_threshold = value;
-    if( name == "constant_brake" )
-      constant_brake = value;
-    if( name == "lookahead_time")
-      lookahead_time = value;
   }
 }
 
@@ -122,22 +114,6 @@ PID::get_next_vehicle_command( const dynamics::Trajectory& trajectory, const dyn
   double pid_signal_psi = k_feed_forward_steering_angle * reference_point.steering_angle - ki_y * integral_y - kp_y * error_y
                         - heading_weight * heading_error - kp_omega * omega_error;
 
-  reference_point = trajectory.get_state_at_time( current_state.time );
-
-  // Precompute sin and cos of the reference point's yaw angle to avoid repeated calculations
-  sin_yaw_ref = std::sin( reference_point.yaw_angle );
-  cos_yaw_ref = std::cos( reference_point.yaw_angle );
-
-  // Precompute sin and cos of the current state's yaw angle to avoid repeated calculations
-  sin_yaw_current = std::sin( current_state.yaw_angle );
-  cos_yaw_current = std::cos( current_state.yaw_angle );
-
-  // Compute the distance between the current state and the reference point
-  delta_x = current_state.x - reference_point.x; // Distance in the x direction (longitudinal)
-  delta_y = current_state.y - reference_point.y; // Distance in the y direction (lateral)
-
-  // Decompose the distance into longitudinal (error_x) and lateral (error_y) components
-  error_x = cos_yaw_ref * delta_x + sin_yaw_ref * delta_y; // Longitudinal error
 
   // Ensure error_x is valid
   if( std::isnan( error_x ) || !std::isfinite( error_x ) )
@@ -165,13 +141,6 @@ PID::get_next_vehicle_command( const dynamics::Trajectory& trajectory, const dyn
 
   // Compute the longitudinal PID signal (pid_signal_v) to adjust the speed
   double pid_signal_v = k_feed_forward_ax * reference_point.ax - kp_x * error_x - ki_x * integral_x - velocity_weight * error_v;
-
-  // Constant braking when stopped
-  if ( reference_point.ax < acceleration_threshold && current_state.vx < velocity_threshold )
-  {
-    pid_signal_v = constant_brake;
-    pid_signal_psi = last_steering_angle;
-  }
 
   // Steering angle velocity control for smoother transitions
   double steering_angle_velocity = ( pid_signal_psi - last_steering_angle ) / dt;

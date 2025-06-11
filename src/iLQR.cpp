@@ -145,26 +145,26 @@ iLQR::set_parameters( const std::map<std::string, double>& params )
       max_iterations = static_cast<int>( value );
     else if( name == "dt" )
       dt = value;
-    else if( name == "heading_weight" )
-      heading_weight = value;
-    else if( name == "vel_weight" )
-      vel_weight = value;
-    else if( name == "acc_weight" )
-      acc_weight = value;
-    else if( name == "steer_weight" )
-      steer_weight = value;
-    else if( name == "jerk_weight" )
-      jerk_weight = value;
-    else if( name == "steer_rate_weight" )
-      steer_rate_weight = value;
-    else if( name == "convergence_threshold" )
-      convergence_threshold = value;
-    else if( name == "longitudinal_weight" )
-      longitudinal_weight = value; // Set longitudinal weight
-    else if( name == "lateral_weight" )
-      lateral_weight = value; // Set lateral weight
-    else if( name == "debug active" )
-      debug_active = static_cast<bool>( value );
+    // else if( name == "heading_weight" )
+    //   heading_weight = value;
+    // else if( name == "vel_weight" )
+    //   vel_weight = value;
+    // else if( name == "acc_weight" )
+    //   acc_weight = value;
+    // else if( name == "steer_weight" )
+    //   steer_weight = value;
+    // else if( name == "jerk_weight" )
+    //   jerk_weight = value;
+    // else if( name == "steer_rate_weight" )
+    //   steer_rate_weight = value;
+    // else if( name == "convergence_threshold" )
+    //   convergence_threshold = value;
+    // else if( name == "longitudinal_weight" )
+    //   longitudinal_weight = value; // Set longitudinal weight
+    // else if( name == "lateral_weight" )
+    //   lateral_weight = value; // Set lateral weight
+    // else if( name == "debug active" )
+    //   debug_active = static_cast<bool>( value );
 
     std::cerr << name << " : " << value << std::endl;
   }
