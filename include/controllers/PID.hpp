@@ -35,15 +35,15 @@ class PID
 private:
 
   // PID Gains
-  double kp_x                          = 0.0;
+  double kp_x                          = 1.0;
   double ki_x                          = 0.0;
-  double velocity_weight               = 5.0;
+  double velocity_weight               = 1.0;
   double kp_y                          = 5.0;
   double ki_y                          = 0.0;
   double heading_weight                = 5.0;
   double kp_omega                      = 0.5;
-  double k_feed_forward_ax             = 1.0;
-  double k_feed_forward_steering_angle = 1.0;
+  double k_feed_forward_ax             = 0.0;
+  double k_feed_forward_steering_angle = 0.0;
   double dt                            = 0.05;
   double steering_comfort              = 2.5; // Comfort limit for steering change
   double acceleration_comfort          = 2.5; // Comfort limit for acceleration change
@@ -64,9 +64,6 @@ private:
 public:
 
   dynamics::PhysicalVehicleModel model;
-
-
-  dynamics::VehicleCommandLimits limits;
   PID();
 
   // Function to set the PID gains

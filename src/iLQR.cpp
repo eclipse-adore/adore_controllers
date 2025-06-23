@@ -259,7 +259,7 @@ iLQR::get_next_vehicle_command( const dynamics::Trajectory& in_trajectory, const
   dynamics::VehicleCommand command;
   command.acceleration   = ( u_traj[0].acceleration + u_traj[1].acceleration ) / 2;
   command.steering_angle = ( u_traj[0].steering_angle + u_traj[1].steering_angle ) / 2;
-  command.clamp_within_limits( limits );
+  command.clamp_within_limits( model.params );
 
   // Save the optimized trajectory for warm start
   previous_u_traj = u_traj;
@@ -317,7 +317,7 @@ iLQR::line_search( double& line_step, const double min_step, const int T, const 
       u_new.steering_angle           += line_step * du[1];
 
       // Apply control limits if necessary
-      u_new.clamp_within_limits( limits );
+      u_new.clamp_within_limits( model.params );
       u_traj_new[t] = u_new;
 
       // Simulate dynamics

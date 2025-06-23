@@ -90,9 +90,6 @@ public:
   dynamics::PhysicalVehicleModel model;
 
   dynamics::Trajectory get_last_trajectory();
-
-  dynamics::VehicleCommandLimits limits;
-
   // store for warm start
   std::vector<dynamics::VehicleCommand> previous_u_traj;
   dynamics::Trajectory                  previous_traj;

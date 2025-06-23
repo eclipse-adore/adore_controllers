@@ -53,7 +53,12 @@ PID::set_parameters( const std::map<std::string, double>& params )
 dynamics::VehicleCommand
 PID::get_next_vehicle_command( const dynamics::Trajectory& trajectory, const dynamics::VehicleStateDynamic& current_state )
 {
+
   dynamics::VehicleCommand return_command;
+  return_command.acceleration   = trajectory.states[0].ax;             // Initialize acceleration
+  return_command.steering_angle = trajectory.states[0].steering_angle; // Initialize steering angle
+
+  return return_command;
   dt_trajectory = trajectory.states[1].time - trajectory.states[0].time;
 
   // Safety check: Ensure dt is valid and non-zero
@@ -194,7 +199,7 @@ PID::get_next_vehicle_command( const dynamics::Trajectory& trajectory, const dyn
   last_acceleration   = return_command.acceleration;
 
   // Ensure command is within limits
-  return_command.clamp_within_limits( limits );
+  return_command.clamp_within_limits( model.params );
 
   return return_command;
 }

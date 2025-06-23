@@ -15,7 +15,6 @@
 #include <optional>
 #include <variant>
 
-#include "controllers/NMPC.hpp"
 #include "controllers/PID.hpp"
 #include "controllers/iLQR.hpp"
 
@@ -27,16 +26,14 @@ namespace controllers
 using Controller = std::variant<PID, iLQR>;
 
 inline void
-set_parameters( Controller& controller, const dynamics::VehicleCommandLimits& command_limits,
-                const std::map<std::string, double>& controller_settings, const dynamics::PhysicalVehicleModel& model )
+set_parameters( Controller& controller, const std::map<std::string, double>& controller_settings,
+                const dynamics::PhysicalVehicleModel& model )
 {
-  std::visit(
-    [&]( auto& ctrl ) { // Capture by reference
-      ctrl.limits = command_limits;
-      ctrl.set_parameters( controller_settings );
-      ctrl.model = model;
-    },
-    controller );
+  std::visit( [&]( auto& ctrl )
+  { // Capture by reference
+    ctrl.set_parameters( controller_settings );
+    ctrl.model = model;
+  }, controller );
 }
 
 inline std::optional<dynamics::VehicleCommand>
@@ -49,11 +46,10 @@ get_next_vehicle_command( Controller& controller, const dynamics::Trajectory& tr
   }
 
   // Use std::visit to compute the control action
-  dynamics::VehicleCommand controls = std::visit(
-    [&]( auto& ctrl ) { // Capture by reference
-      return ctrl.get_next_vehicle_command( trajectory, vehicle_state );
-    },
-    controller );
+  dynamics::VehicleCommand controls = std::visit( [&]( auto& ctrl )
+  { // Capture by reference
+    return ctrl.get_next_vehicle_command( trajectory, vehicle_state );
+  }, controller );
 
   return controls;
 }
