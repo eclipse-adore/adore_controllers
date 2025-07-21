@@ -37,13 +37,13 @@ private:
   size_t horizon_steps         = 30;  // Number of time steps
   double dt                    = 0.1; // Time step duration
   double heading_weight        = 10.0;
-  double lateral_weight        = 50.0;
+  double lateral_weight        = 10.0;
   double longitudinal_weight   = 1.0;
-  double vel_weight            = 50.0; // Velocity tracking weight
+  double vel_weight            = 10.0; // Velocity tracking weight
   double acc_weight            = 0.01; // Acceleration penalty weight
   double steer_weight          = 0.1;  // Steering penalty weight
-  double jerk_weight           = 10.0;
-  double steer_rate_weight     = 10.0;
+  double jerk_weight           = 1.0;
+  double steer_rate_weight     = 1.0;
   double convergence_threshold = 1e-6;
   size_t max_iterations        = 100;
 

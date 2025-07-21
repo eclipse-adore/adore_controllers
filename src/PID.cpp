@@ -23,185 +23,89 @@ PID::set_parameters( const std::map<std::string, double>& params )
 {
   for( const auto& [name, value] : params )
   {
-    if( name == "kp_x" )
-      kp_x = value;
-    if( name == "ki_x" )
-      ki_x = value;
-    if( name == "velocity_weight" )
-      velocity_weight = value;
-    if( name == "kp_y" )
-      kp_y = value;
-    if( name == "ki_y" )
-      ki_y = value;
-    if( name == "heading_weight" )
-      heading_weight = value;
-    if( name == "kp_omega" )
-      kp_omega = value;
+    if( name == "acc_smoothing" )
+      acc_smoothing = value;
+    if( name == "k_long" )
+      k_long = value;
+    if( name == "k_v" )
+      k_v = value;
     if( name == "k_feed_forward_ax" )
       k_feed_forward_ax = value;
-    if( name == "k_feed_forward_steering_angle" )
-      k_feed_forward_steering_angle = value;
     if( name == "dt" && value > 0 ) // Ensure dt > 0
       dt = value;
-    if( name == "steering_comfort" )
-      steering_comfort = value;
-    if( name == "acceleration_comfort" )
-      acceleration_comfort = value;
+    if( name == "min_lookahead" )
+      min_lookahead = value;
+    if( name == "max_lookahead" )
+      max_lookahead = value;
+    if( name == "base_lookahead" )
+      base_lookahead = value;
+    if( name == "lookahead_gain" )
+      lookahead_gain = value;
+    if( name == "slow_steer_smoothing" )
+      slow_steer_smoothing = value;
+    if( name == "debug_active" )
+      debug_active = static_cast<bool>( value );
   }
 }
 
 dynamics::VehicleCommand
 PID::get_next_vehicle_command( const dynamics::Trajectory& trajectory, const dynamics::VehicleStateDynamic& current_state )
 {
+  dynamics::VehicleCommand command;
 
-  dynamics::VehicleCommand return_command;
-  return_command.acceleration   = trajectory.states[0].ax;             // Initialize acceleration
-  return_command.steering_angle = trajectory.states[0].steering_angle; // Initialize steering angle
+  const double vx                 = current_state.vx;
+  const double steering_lookahead = std::clamp( base_lookahead + lookahead_gain * vx, min_lookahead, max_lookahead );
 
-  return return_command;
-  dt_trajectory = trajectory.states[1].time - trajectory.states[0].time;
+  const auto steer_reference = trajectory.get_state_at_time( current_state.time + steering_lookahead );
+  const auto acc_reference   = trajectory.get_state_at_time( current_state.time );
 
-  // Safety check: Ensure dt is valid and non-zero
-  if( dt_trajectory <= std::numeric_limits<double>::epsilon() )
-  {
-    throw std::runtime_error( "dt trajectory is too small or zero, which may cause division by zero." );
-  }
+  command.acceleration   = compute_acceleration( current_state, acc_reference );
+  command.steering_angle = compute_steering_angle( current_state, steer_reference );
 
-  // Find the nearest point on the trajectory.points based on time
-  auto reference_point = trajectory.get_state_at_time( current_state.time + lookahead_time );
+  last_acceleration   = command.acceleration;
+  last_steering_angle = command.steering_angle;
+  command.clamp_within_limits( model.params );
+  return command;
+}
 
+double
+PID::compute_steering_angle( const dynamics::VehicleStateDynamic& current_state, const dynamics::VehicleStateDynamic& reference_state )
+{
+  const double sin_yaw_ref = std::sin( reference_state.yaw_angle );
+  const double cos_yaw_ref = std::cos( reference_state.yaw_angle );
 
-  // Precompute sin and cos of the reference point's yaw angle to avoid repeated calculations
-  double sin_yaw_ref = std::sin( reference_point.yaw_angle );
-  double cos_yaw_ref = std::cos( reference_point.yaw_angle );
+  const double dx = current_state.x - reference_state.x;
+  const double dy = current_state.y - reference_state.y; // CHANGED
 
-  // Precompute sin and cos of the current state's yaw angle to avoid repeated calculations
-  double sin_yaw_current = std::sin( current_state.yaw_angle );
-  double cos_yaw_current = std::cos( current_state.yaw_angle );
+  double error_y = -sin_yaw_ref * dx + cos_yaw_ref * dy;
+  double error_x = cos_yaw_ref * dx + sin_yaw_ref * dy;
 
-  // Compute the distance between the current state and the reference point
-  double delta_x = current_state.x - reference_point.x; // Distance in the x direction (longitudinal)
-  double delta_y = current_state.y - reference_point.y; // Distance in the y direction (lateral)
+  double alpha = std::atan2( -dy, -dx ) - current_state.yaw_angle;
+  alpha        = math::normalize_angle( alpha );
 
-  // Decompose the distance into longitudinal (error_x) and lateral (error_y) components
-  double error_x = cos_yaw_ref * delta_x + sin_yaw_ref * delta_y; // Longitudinal error
-  double error_y = cos_yaw_ref * delta_y - sin_yaw_ref * delta_x; // Lateral error
+  // Pure‑Pursuit steering law inspired by autoware version
+  double steer_signal = std::atan2( 2.0 * model.params.wheelbase * std::sin( alpha ), -error_x )
+                      * std::tanh( -error_x * slow_steer_smoothing );
+  return steer_signal;
+}
 
-  if( debug_active )
-  {
-    // Print debug information for longitudinal and lateral errors
-    std::cerr << "Error X (Longitudinal): " << error_x << " m" << std::endl;
-    std::cerr << "Error Y (Lateral): " << error_y << " m" << std::endl;
-  }
+double
+PID::compute_acceleration( const dynamics::VehicleStateDynamic& current_state, const dynamics::VehicleStateDynamic& reference_state )
+{
 
+  const double sin_yaw_ref = std::sin( reference_state.yaw_angle );
+  const double cos_yaw_ref = std::cos( reference_state.yaw_angle );
 
-  // Ensure error_y is valid
-  if( std::isnan( error_y ) || !std::isfinite( error_y ) )
-  {
-    error_y = 0.0; // Fallback to 0 if NaN or invalid
-    // std::cerr << "Error Y was NaN or invalid, resetting to 0" << std::endl;
-  }
+  const double dx = current_state.x - reference_state.x;
+  const double dy = current_state.y - reference_state.y; // CHANGED
 
-  // Anti-windup: Clamp integral term for lateral control
-  integral_y = std::clamp( integral_y + error_y * dt, -1.0, 1.0 );
+  double error_x = cos_yaw_ref * dx + sin_yaw_ref * dy;
+  double error_v = current_state.vx - reference_state.vx;
 
-  // Compute heading error (difference between current and reference yaw angles)
-  double heading_error = std::atan2( -sin_yaw_ref * cos_yaw_current + cos_yaw_ref * sin_yaw_current,
-                                     cos_yaw_ref * cos_yaw_current + sin_yaw_ref * sin_yaw_current );
+  double acc_signal = k_feed_forward_ax * reference_state.ax - k_long * error_x - k_v * error_v;
+  acc_signal        = ( 1 - acc_smoothing ) * acc_signal + acc_smoothing * last_acceleration;
 
-  // Compute omega error (difference between current and reference yaw rate)
-  double omega_error = current_state.yaw_rate - reference_point.yaw_rate;
-
-  // Print debug information for heading error
-  //  std::cerr << "Heading Error: " << heading_error << " radians" << std::endl;
-
-  // Compute the steering PID signal (pid_signal_psi)
-  double pid_signal_psi = k_feed_forward_steering_angle * reference_point.steering_angle - ki_y * integral_y - kp_y * error_y
-                        - heading_weight * heading_error - kp_omega * omega_error;
-
-
-  // Ensure error_x is valid
-  if( std::isnan( error_x ) || !std::isfinite( error_x ) )
-  {
-    error_x = 0.0; // Fallback to 0 if NaN or invalid
-    // std::cerr << "Error X was NaN or invalid, resetting to 0" << std::endl;
-  }
-
-  // Anti-windup: Clamp integral term for longitudinal control
-  integral_x = std::clamp( integral_x + error_x * dt, -1.0, 1.0 );
-
-  // Compute velocity error (difference between current and reference velocities)
-  double error_v = current_state.vx - reference_point.vx;
-  if( debug_active )
-  {
-    // Print debug information for velocity error
-    std::cerr << "Velocity Error: " << error_v << " m/s" << std::endl;
-  }
-  // Ensure error_v is valid
-  if( std::isnan( error_v ) || !std::isfinite( error_v ) )
-  {
-    error_v = 0.0; // Fallback to 0 if NaN or invalid
-    // std::cerr << "Velocity Error was NaN or invalid, resetting to 0" << std::endl;
-  }
-
-  // Compute the longitudinal PID signal (pid_signal_v) to adjust the speed
-  double pid_signal_v = k_feed_forward_ax * reference_point.ax - kp_x * error_x - ki_x * integral_x - velocity_weight * error_v;
-
-  // Steering angle velocity control for smoother transitions
-  double steering_angle_velocity = ( pid_signal_psi - last_steering_angle ) / dt;
-
-  // Clamp steering angle velocity for comfort, ensuring smoother transitions between angles
-  if( steering_angle_velocity > steering_comfort )
-  {
-    return_command.steering_angle = last_steering_angle + dt * steering_comfort;
-  }
-  else if( steering_angle_velocity < -steering_comfort )
-  {
-    return_command.steering_angle = last_steering_angle - dt * steering_comfort;
-  }
-  else
-  {
-    return_command.steering_angle = pid_signal_psi; // Apply the steering PID signal directly
-  }
-
-  // Longitudinal Jerk control for smoother transitions
-  double longitudinal_jerk = ( pid_signal_v - last_acceleration ) / dt;
-
-  // Clamp longitudinal jerk for comfort, ensuring smooth acceleration
-  if( longitudinal_jerk > acceleration_comfort )
-  {
-    return_command.acceleration = last_acceleration + dt * acceleration_comfort;
-  }
-  else if( longitudinal_jerk < -acceleration_comfort )
-  {
-    return_command.acceleration = last_acceleration - dt * acceleration_comfort;
-  }
-  else
-  {
-    return_command.acceleration = pid_signal_v; // Apply the acceleration PID signal directly
-  }
-
-  // Ensure command values are valid and not NaN or infinite
-  if( std::isnan( return_command.acceleration ) || !std::isfinite( return_command.acceleration ) )
-  {
-    return_command.acceleration = 0.0; // Fallback to 0 if NaN or invalid
-    // std::cerr << "Acceleration was NaN or invalid, resetting to 0" << std::endl;
-  }
-
-  if( std::isnan( return_command.steering_angle ) || !std::isfinite( return_command.steering_angle ) )
-  {
-    return_command.steering_angle = 0.0; // Fallback to 0 if NaN or invalid
-    // std::cerr << "Steering Angle was NaN or invalid, resetting to 0" << std::endl;
-  }
-
-  // Update last known values for the next iteration
-  last_steering_angle = return_command.steering_angle;
-  last_acceleration   = return_command.acceleration;
-
-  // Ensure command is within limits
-  return_command.clamp_within_limits( model.params );
-
-  return return_command;
+  return acc_signal;
 }
 
 PID::PID() {} // Initialization

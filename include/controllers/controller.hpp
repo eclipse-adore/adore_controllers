@@ -17,20 +17,20 @@
 
 #include "controllers/PID.hpp"
 #include "controllers/iLQR.hpp"
+#include "controllers/passthrough.hpp"
 
 namespace adore
 {
 namespace controllers
 {
 
-using Controller = std::variant<PID, iLQR>;
+using Controller = std::variant<PID, iLQR, PassThrough>;
 
 inline void
 set_parameters( Controller& controller, const std::map<std::string, double>& controller_settings,
                 const dynamics::PhysicalVehicleModel& model )
 {
-  std::visit( [&]( auto& ctrl )
-  { // Capture by reference
+  std::visit( [&]( auto& ctrl ) { // Capture by reference
     ctrl.set_parameters( controller_settings );
     ctrl.model = model;
   }, controller );
@@ -46,8 +46,7 @@ get_next_vehicle_command( Controller& controller, const dynamics::Trajectory& tr
   }
 
   // Use std::visit to compute the control action
-  dynamics::VehicleCommand controls = std::visit( [&]( auto& ctrl )
-  { // Capture by reference
+  dynamics::VehicleCommand controls = std::visit( [&]( auto& ctrl ) { // Capture by reference
     return ctrl.get_next_vehicle_command( trajectory, vehicle_state );
   }, controller );
 

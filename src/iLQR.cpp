@@ -115,8 +115,8 @@ iLQR::compute_cost_derivatives( const int T, adore::dynamics::Trajectory& x_traj
 
     // Hessians, scaled by dt
     Eigen::MatrixXd l_xx = Eigen::MatrixXd::Zero( n_x, n_x );
-    l_xx( 0, 0 )         = 2.0 * longitudinal_weight * ref_cos * ref_cos + 2.0 * lateral_weight * ref_sin * ref_sin * dt;
-    l_xx( 1, 1 )         = 2.0 * longitudinal_weight * ref_sin * ref_sin + 2.0 * lateral_weight * ref_cos * ref_cos * dt;
+    l_xx( 0, 0 )         = ( 2.0 * longitudinal_weight * ref_cos * ref_cos + 2.0 * lateral_weight * ref_sin * ref_sin ) * dt;
+    l_xx( 1, 1 )         = ( 2.0 * longitudinal_weight * ref_sin * ref_sin + 2.0 * lateral_weight * ref_cos * ref_cos ) * dt;
     l_xx( 2, 2 )         = 2.0 * heading_weight * dt;
     l_xx( 3, 3 )         = 2.0 * vel_weight * dt;
 
@@ -145,26 +145,26 @@ iLQR::set_parameters( const std::map<std::string, double>& params )
       max_iterations = static_cast<int>( value );
     else if( name == "dt" )
       dt = value;
-    // else if( name == "heading_weight" )
-    //   heading_weight = value;
-    // else if( name == "vel_weight" )
-    //   vel_weight = value;
-    // else if( name == "acc_weight" )
-    //   acc_weight = value;
-    // else if( name == "steer_weight" )
-    //   steer_weight = value;
-    // else if( name == "jerk_weight" )
-    //   jerk_weight = value;
-    // else if( name == "steer_rate_weight" )
-    //   steer_rate_weight = value;
-    // else if( name == "convergence_threshold" )
-    //   convergence_threshold = value;
-    // else if( name == "longitudinal_weight" )
-    //   longitudinal_weight = value; // Set longitudinal weight
-    // else if( name == "lateral_weight" )
-    //   lateral_weight = value; // Set lateral weight
-    // else if( name == "debug active" )
-    //   debug_active = static_cast<bool>( value );
+    else if( name == "heading_weight" )
+      heading_weight = value;
+    else if( name == "vel_weight" )
+      vel_weight = value;
+    else if( name == "acc_weight" )
+      acc_weight = value;
+    else if( name == "steer_weight" )
+      steer_weight = value;
+    else if( name == "jerk_weight" )
+      jerk_weight = value;
+    else if( name == "steer_rate_weight" )
+      steer_rate_weight = value;
+    else if( name == "convergence_threshold" )
+      convergence_threshold = value;
+    else if( name == "longitudinal_weight" )
+      longitudinal_weight = value; // Set longitudinal weight
+    else if( name == "lateral_weight" )
+      lateral_weight = value; // Set lateral weight
+    else if( name == "debug active" )
+      debug_active = static_cast<bool>( value );
 
     std::cerr << name << " : " << value << std::endl;
   }
@@ -176,8 +176,6 @@ iLQR::get_next_vehicle_command( const dynamics::Trajectory& in_trajectory, const
   const size_t                          T = std::min( horizon_steps, in_trajectory.states.size() );
   std::vector<dynamics::VehicleCommand> u_traj( T, dynamics::VehicleCommand( 0.0, 0.0 ) );
 
-
-  // dynamics::Trajectory ref_trajectory = in_trajectory;
   dynamics::Trajectory ref_trajectory; // = in_trajectory;
   double               start_time = current_state.time;
   for( size_t i = 0; i < T; i++ )
@@ -259,7 +257,6 @@ iLQR::get_next_vehicle_command( const dynamics::Trajectory& in_trajectory, const
   dynamics::VehicleCommand command;
   command.acceleration   = ( u_traj[0].acceleration + u_traj[1].acceleration ) / 2;
   command.steering_angle = ( u_traj[0].steering_angle + u_traj[1].steering_angle ) / 2;
-  command.clamp_within_limits( model.params );
 
   // Save the optimized trajectory for warm start
   previous_u_traj = u_traj;
