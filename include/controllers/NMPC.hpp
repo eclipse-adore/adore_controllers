@@ -1,16 +1,17 @@
 /********************************************************************************
- * Copyright (c) 2025 Contributors to the Eclipse Foundation
- *
- * See the NOTICE file(s) distributed with this work for additional
- * information regarding copyright ownership.
+ * Copyright (C) 2017-2025 German Aerospace Center (DLR).
+ * Eclipse ADORe, Automated Driving Open Research https://eclipse.org/adore
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
- * https://www.eclipse.org/legal/epl-2.0
+ * http://www.eclipse.org/legal/epl-2.0.
  *
  * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *    Sanath Himasekhar Konthala
+ *    Marko Mizdrak
  ********************************************************************************/
-
 #pragma once
 
 #include <cmath>
@@ -56,7 +57,7 @@ public:
 
   static constexpr int    state_size       = 5;
   static constexpr int    input_size       = 2;
-  static constexpr int    control_points   = 20;
+  static constexpr int    control_points   = 10;
   static constexpr double sim_time         = 1.0; // Simulation time for the MPC
   static constexpr int    constraints_size = 0;
 
@@ -70,6 +71,12 @@ private:
   double last_acceleration   = 0.0;
   double bad_counter         = 0;
   int    counter             = 0;
+
+  double k_x = 1.0;
+  double k_y = 1.0;
+  double k_psi = 1.0;
+  double k_v = 1.0;
+  double k_delta = 1.0;
 
   // Variables for MPC solver configuration
   OptiNLC_Options options;

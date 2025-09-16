@@ -1,16 +1,17 @@
 /********************************************************************************
- * Copyright (c) 2025 Contributors to the Eclipse Foundation
- *
- * See the NOTICE file(s) distributed with this work for additional
- * information regarding copyright ownership.
+ * Copyright (C) 2017-2025 German Aerospace Center (DLR).
+ * Eclipse ADORe, Automated Driving Open Research https://eclipse.org/adore
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
- * https://www.eclipse.org/legal/epl-2.0
+ * http://www.eclipse.org/legal/epl-2.0.
  *
  * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *    Sanath Himasekhar Konthala
+ *    Marko Mizdrak
  ********************************************************************************/
-
 #include "controllers/NMPC.hpp"
 
 namespace adore
@@ -23,7 +24,7 @@ void
 NMPC::set_parameters( const std::map<std::string, double>& params )
 {
   options.intermediateIntegration = 2;
-  options.OptiNLC_ACC             = 1e-08;
+  options.OptiNLC_ACC             = 1e-06;
   options.maxNumberOfIteration    = 500;
   options.OSQP_verbose            = false;
   options.OSQP_max_iter           = 400;
@@ -31,20 +32,16 @@ NMPC::set_parameters( const std::map<std::string, double>& params )
 
   for( const auto& [name, value] : params )
   {
-    if( name == "intermediate_integration" )
-      options.intermediateIntegration = static_cast<int>( value );
-    if( name == "max_iterations" )
-      options.maxNumberOfIteration = static_cast<int>( value );
-    if( name == "osqp_max_iterations" )
-      options.OSQP_max_iter = static_cast<int>( value );
-    if( name == "OptiNLC_ACC" )
-      options.OptiNLC_ACC = value;
-    if( name == "time_limit" )
-      options.OptiNLC_time_limit = value;
-    if( name == "debug_active" )
-    {
-      options.OSQP_verbose = static_cast<bool>( value );
-    }
+    if( name == "k_v" )
+      k_v = value;
+    if( name == "k_x" )
+      k_x = value;
+    if( name == "k_y" )
+      k_y = value;
+    if( name == "k_psi" )
+      k_psi = value;
+    if( name == "k_delta" )
+      k_delta = value;
   }
   options.timeStep = sim_time / control_points;
 }
@@ -164,9 +161,65 @@ NMPC::get_next_vehicle_command( const dynamics::Trajectory& trajectory, const dy
   std::vector<double> delta_output, acc_output;
   bool                success = solve_mpc( ocp, initial_state, initial_input, delta_output, acc_output, current_state.time );
 
-  return_command.steering_angle = delta_output[0];
-  return_command.acceleration   = acc_output[0];
-  std::cerr << "opt out steer: " << delta_output[0] << "     acc: " << acc_output[0] << std::endl;
+  // return_command.steering_angle = delta_output[0];
+  // return_command.acceleration   = acc_output[0];
+  double steering_comfort = 200;
+  double acceleration_comfort = 205;
+  double dt = 0.05;
+
+  double steering_signal = delta_output[0];
+  double acc_signal = acc_output[0];
+
+  // Steering angle velocity control for smoother transitions
+  double steering_angle_velocity = ( steering_signal - last_steering_angle ) / dt;
+
+  // Clamp steering angle velocity for comfort, ensuring smoother transitions between angles
+  if( steering_angle_velocity > steering_comfort )
+  {
+    return_command.steering_angle = last_steering_angle + dt * steering_comfort;
+  }
+  else if( steering_angle_velocity < -steering_comfort )
+  {
+    return_command.steering_angle = last_steering_angle - dt * steering_comfort;
+  }
+  else
+  {
+    return_command.steering_angle = steering_signal; // Apply the steering PID signal directly
+  }
+
+  // Longitudinal Jerk control for smoother transitions
+  double longitudinal_jerk = ( acc_signal - last_acceleration ) / dt;
+
+  // Clamp longitudinal jerk for comfort, ensuring smooth acceleration
+  if( longitudinal_jerk > acceleration_comfort )
+  {
+    return_command.acceleration = last_acceleration + dt * acceleration_comfort;
+  }
+  else if( longitudinal_jerk < -acceleration_comfort )
+  {
+    return_command.acceleration = last_acceleration - dt * acceleration_comfort;
+  }
+  else
+  {
+    return_command.acceleration = acc_signal; // Apply the acceleration PID signal directly
+  }
+
+  // Ensure command values are valid and not NaN or infinite
+  if( std::isnan( return_command.acceleration ) || !std::isfinite( return_command.acceleration ) )
+  {
+    return_command.acceleration = 0.0; // Fallback to 0 if NaN or invalid
+    // std::cerr << "Acceleration was NaN or invalid, resetting to 0" << std::endl;
+  }
+
+  if( std::isnan( return_command.steering_angle ) || !std::isfinite( return_command.steering_angle ) )
+  {
+    return_command.steering_angle = 0.0; // Fallback to 0 if NaN or invalid
+    // std::cerr << "Steering Angle was NaN or invalid, resetting to 0" << std::endl;
+  }
+  return_command.clamp_within_limits( limits );
+  last_steering_angle = return_command.steering_angle;
+  last_acceleration = return_command.acceleration;
+  std::cerr << "opt out steer: " << steering_signal << "     acc: " << acc_signal << std::endl;
 
   // Handle bad conditions if the solution is not good
   if( !success )
@@ -201,10 +254,11 @@ NMPC::setup_dynamic_model( OptiNLC_OCP<double, NMPC::input_size, NMPC::state_siz
     // const double lateral_error = -sin( state[PSI] ) * ( state[X] - reference_point.x ) + cos( state[PSI] ) * ( state[Y] -
     // reference_point.y );
 
-    derivative[L] = ( state[V] - reference_point.vx ) * ( state[V] - reference_point.vx )
-                  + 2 * ( state[X] - reference_point.x ) * ( state[X] - reference_point.x ) + input[DELTA] * input[DELTA]
-                  + 2 * ( state[Y] - reference_point.y ) * ( state[Y] - reference_point.y )
-                  + 1 * atan2( sin( reference_point.yaw_angle - state[PSI] ), cos( reference_point.yaw_angle - state[PSI] ) )
+    derivative[L] = k_v * ( state[V] - reference_point.vx ) * ( state[V] - reference_point.vx )
+                  + k_x * ( state[X] - reference_point.x ) * ( state[X] - reference_point.x )
+                  + k_y * ( state[Y] - reference_point.y ) * ( state[Y] - reference_point.y )
+                  + k_delta * ( input[DELTA] - last_steering_angle ) * ( input[DELTA] - last_steering_angle )
+                  + k_psi * atan2( sin( reference_point.yaw_angle - state[PSI] ), cos( reference_point.yaw_angle - state[PSI] ) )
                       * atan2( sin( reference_point.yaw_angle - state[PSI] ), cos( reference_point.yaw_angle - state[PSI] ) );
   } );
 }
