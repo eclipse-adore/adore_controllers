@@ -38,14 +38,14 @@ private:
   double k_long            = 1.0;
   double k_v               = 1.0;
   double k_feed_forward_ax = 1.0;
-  double dt                = 0.05;
+  double dt                = 0.1;
   double acc_smoothing     = 0.95;
 
-  double min_lookahead        = 0.0;
-  double max_lookahead        = 1.0;
-  double base_lookahead       = 0.0;
+  double min_lookahead        = 0.1;
+  double max_lookahead        = 0.1;
+  double base_lookahead       = 0.5;
   double lookahead_gain       = 0.1; // scales with speed
-  double slow_steer_smoothing = 2.0;
+  double slow_steer_smoothing = 4.0;
 
   // Last known steering angle and acceleration to ensure smooth transitions
   double last_steering_angle = 0.0;

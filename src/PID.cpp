@@ -56,7 +56,11 @@ PID::get_next_vehicle_command( const dynamics::Trajectory& trajectory, const dyn
   const double vx                 = current_state.vx;
   const double steering_lookahead = std::clamp( base_lookahead + lookahead_gain * vx, min_lookahead, max_lookahead );
 
-  const auto steer_reference = trajectory.get_state_at_time( current_state.time + steering_lookahead );
+  auto nearest_state = trajectory.get_nearest_state( current_state );
+
+  double ref_time = nearest_state.time;
+
+  const auto steer_reference = trajectory.get_state_at_time( ref_time + steering_lookahead );
   const auto acc_reference   = trajectory.get_state_at_time( current_state.time );
 
   command.acceleration   = compute_acceleration( current_state, acc_reference );
