@@ -18,13 +18,14 @@
 #include "controllers/PID.hpp"
 #include "controllers/iLQR.hpp"
 #include "controllers/passthrough.hpp"
+#include "controllers/pure_pursuit.hpp"
 
 namespace adore
 {
 namespace controllers
 {
 
-using Controller = std::variant<PID, iLQR, PassThrough>;
+using Controller = std::variant<PurePursuit, PID, iLQR, PassThrough>;
 
 inline void
 set_parameters( Controller& controller, const std::map<std::string, double>& controller_settings,

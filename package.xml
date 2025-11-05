@@ -11,7 +11,7 @@
   <depend>adore_dynamics</depend>
 
   <depend>Eigen3</depend>
-   <depend>multi_agent_solver</depend>
+  <depend>multi_agent_solver</depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
