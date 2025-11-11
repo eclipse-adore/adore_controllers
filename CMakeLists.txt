@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 project(adore_controllers VERSION 0.0.1 LANGUAGES CXX)
 
-# C++20 strict mode
+# -------------------------------------------------------------------
+# C++ configuration
+# -------------------------------------------------------------------
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -11,39 +13,58 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
   add_compile_options(-O3)
 endif()
 
-
+# -------------------------------------------------------------------
 # Dependencies
+# -------------------------------------------------------------------
 find_package(ament_cmake REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(MultiAgentSolver REQUIRED)
 find_package(adore_math REQUIRED)
 find_package(adore_dynamics REQUIRED)
+find_package(MultiAgentSolver REQUIRED)
+find_package(Eigen3 REQUIRED)
 
+# -------------------------------------------------------------------
+# Library
+# -------------------------------------------------------------------
+file(GLOB_RECURSE ADORE_CONTROLLERS_SOURCES CONFIGURE_DEPENDS
+  src/*.cpp
+  src/*.c
+)
 
-# Library sources
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "src/*.c")
+add_library(${PROJECT_NAME} SHARED ${ADORE_CONTROLLERS_SOURCES})
 
-# Define library
-add_library(${PROJECT_NAME} SHARED ${SOURCES})
+# Alias for nice modern CMake usage: adore_controllers::adore_controllers
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-# Include paths
 target_include_directories(${PROJECT_NAME}
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 
-# Link dependencies (PRIVATE visibility preferred)
+# Make transitive dependencies visible to consumers and tests
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
-    MultiAgentSolver::MultiAgentSolver
     adore_math::adore_math
     adore_dynamics::adore_dynamics
     Eigen3::Eigen
-
+    MultiAgentSolver::MultiAgentSolver
 )
 
-# Export target to make find_package(adore_math) work in other packages
+# -------------------------------------------------------------------
+# Tests
+# -------------------------------------------------------------------
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  # Library under test, used in test/CMakeLists.txt
+  set(ADORE_TEST_LIB_TARGET ${PROJECT_NAME})
+
+  add_subdirectory(test)
+endif()
+
+# -------------------------------------------------------------------
+# Install & export
+# -------------------------------------------------------------------
 install(TARGETS ${PROJECT_NAME}
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
@@ -51,12 +72,10 @@ install(TARGETS ${PROJECT_NAME}
   RUNTIME DESTINATION bin
 )
 
-# Export headers
 install(DIRECTORY include/
   DESTINATION include
 )
 
-# Export the CMake config for downstream consumers
 install(EXPORT export_${PROJECT_NAME}
   FILE ${PROJECT_NAME}Targets.cmake
   NAMESPACE ${PROJECT_NAME}::
