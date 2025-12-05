@@ -13,6 +13,7 @@
 
 #pragma once
 #include <optional>
+#include <type_traits>
 #include <variant>
 
 #include "controllers/MPC.hpp"
@@ -32,10 +33,12 @@ inline void
 set_parameters( Controller& controller, const std::map<std::string, double>& controller_settings,
                 const dynamics::PhysicalVehicleModel& model )
 {
-  std::visit( [&]( auto& ctrl ) { // Capture by reference
-    ctrl.set_parameters( controller_settings );
-    ctrl.model = model;
-  }, controller );
+  std::visit(
+    [&]( auto& ctrl ) { // Capture by reference
+      ctrl.set_parameters( controller_settings );
+      ctrl.model = model;
+    },
+    controller );
 }
 
 inline std::optional<dynamics::VehicleCommand>
@@ -48,11 +51,47 @@ get_next_vehicle_command( Controller& controller, const dynamics::Trajectory& tr
   }
 
   // Use std::visit to compute the control action
-  dynamics::VehicleCommand controls = std::visit( [&]( auto& ctrl ) { // Capture by reference
-    return ctrl.get_next_vehicle_command( trajectory, vehicle_state );
-  }, controller );
+  dynamics::VehicleCommand controls = std::visit(
+    [&]( auto& ctrl ) { // Capture by reference
+      return ctrl.get_next_vehicle_command( trajectory, vehicle_state );
+    },
+    controller );
 
   return controls;
+}
+
+template<typename, typename = void>
+struct has_get_last_trajectory : std::false_type
+{};
+
+template<typename T>
+struct has_get_last_trajectory<T, std::void_t<decltype( std::declval<const T&>().get_last_trajectory() )>> : std::true_type
+{};
+
+template<typename T>
+inline constexpr bool has_get_last_trajectory_v = has_get_last_trajectory<T>::value;
+
+// Helper to get last trajectory from any controller
+
+inline dynamics::Trajectory
+get_last_trajectory( const Controller& controller )
+{
+  return std::visit(
+    []( const auto& ctrl ) -> dynamics::Trajectory {
+      using Ctrl = std::decay_t<decltype( ctrl )>;
+
+      if constexpr( has_get_last_trajectory_v<Ctrl> )
+      {
+        // Type has get_last_trajectory(), just call it
+        return ctrl.get_last_trajectory();
+      }
+      else
+      {
+        // Type does not have get_last_trajectory(), return empty/default
+        return dynamics::Trajectory{};
+      }
+    },
+    controller );
 }
 
 

@@ -457,7 +457,7 @@ iLQR::extract_dynamics_linearization( const int T, adore::dynamics::Trajectory& 
 }
 
 dynamics::Trajectory
-controllers::iLQR::get_last_trajectory() // for visualizing
+controllers::iLQR::get_last_trajectory() const // for visualizing
 {
   return previous_traj;
 }

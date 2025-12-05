@@ -38,15 +38,27 @@ private:
   {
     double max_iterations = 1000;
     double tolerance      = 1e-3;
-    double max_ms         = 50;
+    double max_ms         = 20;
     double debug          = 1.0;
   } solver_params;
 
-  double dt = 0.05;
+  struct Weights
+  {
+    double longitudinal        = 1.0;
+    double lateral             = 10.0;
+    double heading             = 10.0;
+    double vel                 = 10.0;
+    double steering            = 0.1;
+    double acceleration        = 0.01;
+    double continuity_accel    = 0.1;
+    double continuity_steering = 0.1;
+  } weights;
+
+  double dt            = 0.1;
+  size_t horizon_steps = 10;
 
   // Last known steering angle and acceleration to ensure smooth transitions
-  double last_steering_angle = 0.0;
-  double last_acceleration   = 0.0;
+  dynamics::VehicleCommand last_command;
 
   bool debug_active = false;
 
@@ -54,6 +66,7 @@ private:
   dynamics::Trajectory                reference_trajectory; // Reference trajectory for the controller
   dynamics::VehicleStateDynamic       start_state;          // Current state of the vehicle
   dynamics::PhysicalVehicleParameters vehicle_params;
+  dynamics::Trajectory                previous_traj;
 
 
 public:
@@ -71,6 +84,9 @@ public:
   // Main control function similar to the Stanley controller style
   dynamics::VehicleCommand get_next_vehicle_command( const dynamics::Trajectory&          trajectory,
                                                      const dynamics::VehicleStateDynamic& current_state );
+  dynamics::Trajectory     get_last_trajectory() const;
+
+  dynamics::Trajectory extract_trajectory();
 };
 
 } // namespace controllers
