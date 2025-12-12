@@ -115,8 +115,8 @@ iLQR::compute_cost_derivatives( const int T, adore::dynamics::Trajectory& x_traj
 
     // Hessians, scaled by dt
     Eigen::MatrixXd l_xx = Eigen::MatrixXd::Zero( n_x, n_x );
-    l_xx( 0, 0 )         = 2.0 * longitudinal_weight * ref_cos * ref_cos + 2.0 * lateral_weight * ref_sin * ref_sin * dt;
-    l_xx( 1, 1 )         = 2.0 * longitudinal_weight * ref_sin * ref_sin + 2.0 * lateral_weight * ref_cos * ref_cos * dt;
+    l_xx( 0, 0 )         = ( 2.0 * longitudinal_weight * ref_cos * ref_cos + 2.0 * lateral_weight * ref_sin * ref_sin ) * dt;
+    l_xx( 1, 1 )         = ( 2.0 * longitudinal_weight * ref_sin * ref_sin + 2.0 * lateral_weight * ref_cos * ref_cos ) * dt;
     l_xx( 2, 2 )         = 2.0 * heading_weight * dt;
     l_xx( 3, 3 )         = 2.0 * vel_weight * dt;
 
@@ -176,8 +176,6 @@ iLQR::get_next_vehicle_command( const dynamics::Trajectory& in_trajectory, const
   const size_t                          T = std::min( horizon_steps, in_trajectory.states.size() );
   std::vector<dynamics::VehicleCommand> u_traj( T, dynamics::VehicleCommand( 0.0, 0.0 ) );
 
-
-  // dynamics::Trajectory ref_trajectory = in_trajectory;
   dynamics::Trajectory ref_trajectory; // = in_trajectory;
   double               start_time = current_state.time;
   for( size_t i = 0; i < T; i++ )
@@ -259,7 +257,6 @@ iLQR::get_next_vehicle_command( const dynamics::Trajectory& in_trajectory, const
   dynamics::VehicleCommand command;
   command.acceleration   = ( u_traj[0].acceleration + u_traj[1].acceleration ) / 2;
   command.steering_angle = ( u_traj[0].steering_angle + u_traj[1].steering_angle ) / 2;
-  command.clamp_within_limits( limits );
 
   // Save the optimized trajectory for warm start
   previous_u_traj = u_traj;
@@ -317,7 +314,7 @@ iLQR::line_search( double& line_step, const double min_step, const int T, const 
       u_new.steering_angle           += line_step * du[1];
 
       // Apply control limits if necessary
-      u_new.clamp_within_limits( limits );
+      u_new.clamp_within_limits( model.params );
       u_traj_new[t] = u_new;
 
       // Simulate dynamics
@@ -460,7 +457,7 @@ iLQR::extract_dynamics_linearization( const int T, adore::dynamics::Trajectory& 
 }
 
 dynamics::Trajectory
-controllers::iLQR::get_last_trajectory() // for visualizing
+controllers::iLQR::get_last_trajectory() const // for visualizing
 {
   return previous_traj;
 }

@@ -37,15 +37,15 @@ private:
   size_t horizon_steps         = 30;  // Number of time steps
   double dt                    = 0.1; // Time step duration
   double heading_weight        = 10.0;
-  double lateral_weight        = 50.0;
+  double lateral_weight        = 10.0;
   double longitudinal_weight   = 1.0;
   double vel_weight            = 10.0; // Velocity tracking weight
   double acc_weight            = 0.01; // Acceleration penalty weight
   double steer_weight          = 0.1;  // Steering penalty weight
-  double jerk_weight           = 0.1;
-  double steer_rate_weight     = 0.1;
+  double jerk_weight           = 1.0;
+  double steer_rate_weight     = 1.0;
   double convergence_threshold = 1e-6;
-  size_t max_iterations        = 10000;
+  size_t max_iterations        = 100;
 
   // Initialize variables for the backward pass
   std::vector<Eigen::MatrixXd> A_list;
@@ -89,10 +89,7 @@ public:
 
   dynamics::PhysicalVehicleModel model;
 
-  dynamics::Trajectory get_last_trajectory();
-
-  dynamics::VehicleCommandLimits limits;
-
+  dynamics::Trajectory get_last_trajectory() const;
   // store for warm start
   std::vector<dynamics::VehicleCommand> previous_u_traj;
   dynamics::Trajectory                  previous_traj;
