@@ -18,7 +18,6 @@ endif()
 # -------------------------------------------------------------------
 find_package(ament_cmake REQUIRED)
 find_package(adore_math REQUIRED)
-find_package(caches REQUIRED PATHS ${CMAKE_INSTALL_PREFIX}/../caches/lib/cmake/caches)
 find_package(adore_dynamics REQUIRED)
 find_package(MultiAgentSolver REQUIRED)
 find_package(Eigen3 REQUIRED)
