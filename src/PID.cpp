@@ -67,7 +67,10 @@ PID::get_next_vehicle_command( const dynamics::Trajectory& trajectory, const dyn
   // Safety check: Ensure dt is valid and non-zero
   if( dt_trajectory <= std::numeric_limits<double>::epsilon() )
   {
-    throw std::runtime_error( "dt trajectory is too small or zero, which may cause division by zero." );
+    return_command.acceleration = -1.5;
+    return_command.steering_angle = current_state.steering_angle;
+    std::cerr << "PID: invalid trajectory received" << std::endl;
+    return return_command;
   }
 
   // Lateral control: lookahead reference
